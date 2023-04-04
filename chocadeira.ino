@@ -1,12 +1,17 @@
 #include "DHT.h"
 #include <stdio.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
 
-#define DHTPIN 4     // what digital pin the DHT22 is conected to
+#define DHTPIN 18     // temperature sensor
 #define DHTTYPE DHT22   // there are multiple kinds of DHT sensors
-#define Rele_lamp_02 5
-#define Rele_motor_03 0
+#define Rele_lamp_02 17
+#define Rele_motor_03 16
+
 #define an_hour 3600000UL
 #define thirty_seconds 6000UL
+
+LiquidCrystal_I2C lcd(0x27, 20, 4);
 
 unsigned long startTime;
 double tempMax = 37.80;
@@ -22,8 +27,9 @@ unsigned long startTimeRoll;
 
 DHT dht(DHTPIN, DHTTYPE);
 
-
 void setup() {
+  lcd.begin(); 
+  lcd.backlight();
   Serial.begin(9600);
   Serial.setTimeout(2000);
 
@@ -50,9 +56,9 @@ void loop() {
   float h = dht.readHumidity();
   float t = dht.readTemperature();
 
+  writeLcd(t, h);
 
   long time = (millis() - startTime);
-
   long hora = time / an_hour;
   time = time - an_hour * hora;
   long min = time / 60000;
@@ -67,7 +73,6 @@ void loop() {
     primeiraExecucao = false;
     acionaRolagem(hora, millis());
   }
-
 
     Serial.printf("%02d:%02d:%02d", hora, min, sec);
     Serial.print(" - ");
@@ -91,16 +96,15 @@ void loop() {
     Serial.println(" LAMP ON");
   }
 
-  if(t == 0.0 || isnan(t)) {
-    if(lampActived){
-      digitalWrite(Rele_lamp_02, HIGH);
-      delay(2000);
-      lampActived = false;
-            
-    }else {
+  if(t == 0.00 || isnan(t)) {
       digitalWrite(Rele_lamp_02, LOW);
       delay(2000);
       lampActived = true;
+            
+    if(lampActived) {
+      digitalWrite(Rele_lamp_02, HIGH);
+      delay(2000);
+      lampActived = false;
     }
   }
   Serial.println();
@@ -125,6 +129,18 @@ void loop() {
       acionaRolagem(hora, millis());
     }
   }
+}
+
+void writeLcd(double t, double h) {
+  lcd.clear();
+  lcd.print("Temp: ");
+  lcd.setCursor(7, 0);
+  lcd.print(t);
+  lcd.setCursor(11, 0);
+  lcd.print("Hum: ");
+  lcd.setCursor(17, 0);
+  lcd.print(h);
+  delay(1000);
 }
 
 void acionaRolagem(long hora, long nowTimestamp) {
